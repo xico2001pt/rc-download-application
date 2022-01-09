@@ -5,18 +5,13 @@
 
 /*
 Data Structures:
-    - struct with data and control sockets
-    - response
+    x response
 
 Methods:
     x connectSocket(+ip address, +port) : socket descriptor or -1 if error
     x disconnectSocket(+ftp)
     x sendCommand(fd, command) : number of bytes written or -1
     x receiveResponse(fd, buffer): 0 or -1
-    - sendAndReceiveCommand(ftp, header, body, response, responseSize, ) : 
-    - login(ftp, username, password)
-    - getFilePort(ftp)
-    - retr
 */
 
 /**

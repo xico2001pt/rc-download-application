@@ -6,8 +6,9 @@
 
 Buffer * createBuffer(const char *data, size_t length) {
     Buffer *buffer = (Buffer *) malloc(sizeof(Buffer));
-    buffer->data = (char *) malloc(sizeof(char) * length);
+    buffer->data = (char *) malloc(sizeof(char) * (length + 1));
     memcpy(buffer->data, data, length);
+    buffer->data[length] = '\0';
     buffer->length = length;
     return buffer;
 }

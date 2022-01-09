@@ -51,17 +51,21 @@ int sendCommand(int socketFd, Buffer * command) {
 
 Response * receiveResponse(int socketFd) {
     FILE * file = fdopen(socketFd, "r");
+    printf("here1\n");
 
     ssize_t lineLen, messageLen = 0, bytes;
     char *line = NULL, message[500];
 
+    // TODO: TENTAR COM fgets()
     while((lineLen = getline(&line, &bytes, file)) > 0) {
+        printf("%d - %s\n", lineLen, line);
         snprintf(message + messageLen, lineLen, "%s", line);
         messageLen += lineLen;
     }
 
     Response *response = createResponse(message, messageLen);
 
+    printf("here3\n");
     fclose(file);
     if (line) free(line);
     return response;
