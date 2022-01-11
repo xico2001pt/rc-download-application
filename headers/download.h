@@ -40,8 +40,10 @@ int retrieveIpAddress(const Buffer * host, Buffer * ip);
 
 int login(int control_socket_fd, const Buffer * user, const Buffer * password);
 
-int enterPassiveMode(int control_socket_fd);
+int enterPassiveMode(FTP * ftp);
 
-int downloadFile(const FTP * ftp, const Buffer * file_path);
+int retrieveFile(int control_socket_fd);
+
+int downloadFile(int data_socket_fd, const Buffer * file_path);
 
 #endif // DOWNLOAD_H

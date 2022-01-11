@@ -9,8 +9,8 @@
 #include <string.h>
 
 int main(int argc, char *argv[]) {
-    Arguments args;
-    /*Buffer * host = createBuffer(argv[1], strlen(argv[1]));
+    /*Arguments args;
+    Buffer * host = createBuffer(argv[1], strlen(argv[1]));
     Buffer ip;
     if (retrieveIpAddress(host, &ip)) {
         printf("error\n");
@@ -20,6 +20,7 @@ int main(int argc, char *argv[]) {
     printf("host: %s\nip: %s\n", argv[1], ip.data);
     destroyBuffer(host);*/
 
+    Arguments args;
     if (parseArguments(argv[1], &args)) return -1;
     printf("user: %s\npassword: %s\nhost: %s\nfile_path: %s\n", args.user->data, args.password->data, args.host->data, args.file_path->data);
     
@@ -30,12 +31,16 @@ int main(int argc, char *argv[]) {
     printf("ip: %s\n", ip);
     
     FTP ftp;
-    if ((ftp.control_socket_fd = connectSocket(ip.data, 21)) < 0) return -1;
+    SocketInfo info;
+    info.address = &ip;
+    info.port = 21;
+    if ((ftp.control_socket_fd = connectSocket(&info)) < 0) return -1;
 
     Buffer *response = receiveResponse(ftp.control_socket_fd);
 
     if (login(ftp.control_socket_fd, args.user, args.password) < 0) return -1;
-    
+    if (enterPassiveMode(&ftp) < 0) return -1;
+
     return 0;
 }
 
@@ -128,9 +133,45 @@ int login(int control_socket_fd, const Buffer * user, const Buffer * password) {
         return -1;
     }
     destroyBuffer(response);
+    
     return 0;
 }
 
-int enterPassiveMode(int control_socket_fd);
+int enterPassiveMode(FTP * ftp) {
+    Buffer * command = createBuffer("pasv", 4);
+    int result = sendCommand(ftp->control_socket_fd, command);
+    destroyBuffer(command);
+    if (result < 0) {
+        printf("enterPassiveMode(): Send pasv command\n");
+        return -1;
+    }
 
-int downloadFile(const FTP * ftp, const Buffer * file_path);
+    Buffer * response = receiveResponse(ftp->control_socket_fd);
+    if (response == NULL || strncmp(response->data, "227", 3) != 0) {
+        printf("enterPassiveMode(): Recieve pasv response\n");
+        return -1;
+    }
+
+    SocketInfo data_socket_info;
+    if (parsePasvResponse(response, &data_socket_info) < 0) {
+        printf("enterPassiveMode(): Parse data socket address error\n");
+        return -1;
+    }
+
+    int fd;
+    if ((fd = connectSocket(&data_socket_info)) < 0) {
+        printf("enterPassiveMode(): Connect data socket error\n");
+        return -1;
+    }
+
+    ftp->data_socket_fd = fd;
+    return 0;
+}
+
+int retrieveFile(int control_socket_fd) {
+
+}
+
+int downloadFile(int data_socket_fd, const Buffer * file_path) {
+    
+}

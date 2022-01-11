@@ -7,15 +7,15 @@
 #include <arpa/inet.h>
 #include <string.h>
 
-int connectSocket(char * address, int port) {
+int connectSocket(SocketInfo * info) {
     int socketFd;
     struct sockaddr_in server_addr;
 
     // Server address handling
     bzero((char *) &server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(address);   // 32 bit Internet address network byte ordered
-    server_addr.sin_port = htons(port);                 // Server TCP port must be network byte ordered
+    server_addr.sin_addr.s_addr = inet_addr(info->address->data);   // 32 bit Internet address network byte ordered
+    server_addr.sin_port = htons(info->port);                 // Server TCP port must be network byte ordered
 
     // Opening the TCP socket
     if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {

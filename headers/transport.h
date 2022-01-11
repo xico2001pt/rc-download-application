@@ -17,11 +17,10 @@ Methods:
 /**
  * @brief Opens a socket in the given address and port
  * 
- * @param address Char array with the address of the server we want to connect the socket to (Ex.: "192.168.28.96")
- * @param port    TCP port
+ * @param info  SocketInfo struct with the address of the server we want to connect the socket to (Ex.: "192.168.28.96") and the TCP port
  * @return int socketFd > 0 on success, -1 otherwise
  */
-int connectSocket(char * address, int port);
+int connectSocket(SocketInfo * info);
 
 /**
  * @brief Disconnects the given socket
