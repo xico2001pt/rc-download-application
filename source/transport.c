@@ -19,13 +19,13 @@ int connectSocket(char * address, int port) {
 
     // Opening the TCP socket
     if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("connectSocket(): socket()");
+        printf("connectSocket(): socket()\n");
         return -1;
     }
 
     // Connecting to the server
     if (connect(socketFd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
-        perror("connectSocket(): connect()");
+        printf("connectSocket(): connect()\n");
         return -1;
     }
 
@@ -34,7 +34,7 @@ int connectSocket(char * address, int port) {
 
 int disconnectSocket(int socketFd) {
     if (close(socketFd) < 0) {
-        perror("disconnectSocket(): close()");
+        printf("disconnectSocket(): close()\n");
         return -1;
     }
     return 0;
@@ -42,30 +42,37 @@ int disconnectSocket(int socketFd) {
 
 int sendCommand(int socketFd, Buffer * command) {
     int bytes;
+    Buffer * execute = createBuffer("\n", 1);
+    concatBuffers(command, execute);
+    destroyBuffer(execute);
     if ((bytes = write(socketFd, command->data, command->length) <= 0)) {
-        perror("sendCommand(): write()");
+        printf("sendCommand(): write()\n");
         return -1;
     }
     return bytes;
 }
 
-Response * receiveResponse(int socketFd) {
-    FILE * file = fdopen(socketFd, "r");
-    printf("here1\n");
+Buffer * receiveResponse(int socketFd) {
+    FILE * file = fdopen(dup(socketFd), "r");
 
-    ssize_t lineLen, messageLen = 0, bytes;
+    size_t lineLen, messageLen = 0, bytes;
     char *line = NULL, message[500];
 
-    // TODO: TENTAR COM fgets()
     while((lineLen = getline(&line, &bytes, file)) > 0) {
-        printf("%d - %s\n", lineLen, line);
-        snprintf(message + messageLen, lineLen, "%s", line);
+        snprintf(message + messageLen, lineLen + 1, "%s", line);
         messageLen += lineLen;
+        if (line[3] != '-') break;
     }
 
-    Response *response = createResponse(message, messageLen);
+    if (lineLen < 0) {
+        // processar erro
+        return NULL;
+    }
 
-    printf("here3\n");
+    Buffer *response = createBuffer(message, messageLen);
+
+    printf("%s", message);
+
     fclose(file);
     if (line) free(line);
     return response;

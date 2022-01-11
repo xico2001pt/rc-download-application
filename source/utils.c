@@ -1,6 +1,7 @@
 #include "../headers/utils.h"
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 // Buffer
 
@@ -18,18 +19,8 @@ void destroyBuffer(Buffer *buffer) {
     free(buffer);
 }
 
-// Response
-
-Response * createResponse(char * response, size_t length) {
-    // TODO: RETREIVE STATUS FROM RESPONSE AND ISOLATE MESSAGE
-    Response *result = (Response *) malloc(sizeof(Response));
-    // get status from response
-    result->status = 200;
-    result->message = createBuffer(response, length);
-    return result;
-}
-
-void destroyResponse(Response *response) {
-    destroyBuffer(response->message);
-    free(response);
+void concatBuffers(Buffer *dest, const Buffer *src) {
+    dest->data = (char *) realloc(dest->data, sizeof(char) * (dest->length + src->length + 1));
+    snprintf(dest->data + dest->length, src->length + 1, "%s", src->data);
+    dest->length += src->length;
 }

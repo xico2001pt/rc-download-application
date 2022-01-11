@@ -44,8 +44,8 @@ int sendCommand(int socketFd, Buffer * command);
  * @brief Reads all line in a response from the given socketFd
  * 
  * @param socketFd  File descriptor of the socket
- * @return Response Response obtained from the socket
+ * @return Buffer Response obtained from the socket
  */
-Response * receiveResponse(int socketFd);
+Buffer * receiveResponse(int socketFd);
 
 #endif // TRANSPORT_H
