@@ -43,28 +43,28 @@ int main(int argc, char *argv[]) {
 }
 
 int parseArguments(const char * url_path, Arguments * args) {
-    // TODO: USER E PASSWORD OPCIONAIS
-    char * token;
-    if ((token = strstr(url_path, "://")) == NULL || strncmp(url_path, "ftp", strlen(url_path) - strlen(token)) != 0) {
-        ERROR("parseArguments(): Incorrect protocol");
+    char * str = strdup(url_path);
+
+    if (strtok(str, "://") == NULL || strcmp(str, "ftp") != 0) ERROR("parseArguments(): Incorrect protocol");
+
+    if (strstr(url_path, "@") == NULL) {
+        args->user = createBuffer("anonymous", 9);
+        args->password = createBuffer("anything", 8);
+    } else {
+        if ((str = strtok(NULL, ":")) == NULL) ERROR("parseArguments(): User invalid");
+        str += 2;
+        args->user = createBuffer(str, strlen(str));
+        if ((str = strtok(NULL, "@")) == NULL) ERROR("parseArguments(): Password invalid");
+        args->password = createBuffer(str, strlen(str));
     }
-    token += 3;
 
-    if ((token = strtok(token, ":")) == NULL) ERROR("parseArguments(): User invalid");
+    if ((str = strtok(NULL, "/")) == NULL) ERROR("parseArguments(): Host name invalid");
 
-    args->user = createBuffer(token, strlen(token));
+    args->host = createBuffer(str, strlen(str));
 
-    if ((token = strtok(NULL, "@")) == NULL) ERROR("parseArguments(): Password invalid");
+    if ((str = strtok(NULL, "")) == NULL) ERROR("parseArguments(): URL path invalid");
 
-    args->password = createBuffer(token, strlen(token));
-
-    if ((token = strtok(NULL, "/")) == NULL) ERROR("parseArguments(): Host name invalid");
-
-    args->host = createBuffer(token, strlen(token));
-
-    if ((token = strtok(NULL, "")) == NULL) ERROR("parseArguments(): Url path invalid");
-
-    args->file_path = createBuffer(token, strlen(token));
+    args->file_path = createBuffer(str, strlen(str));
 
     return 0;
 }
