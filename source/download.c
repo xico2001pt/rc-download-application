@@ -27,7 +27,8 @@ int main(int argc, char *argv[]) {
     if ((socket_fds.control_socket_fd = connectSocket(&socket_info)) < 0) ERROR("main: connectSocket()");
     destroyBuffer(ip);
     
-    Buffer * response = receiveResponse(socket_fds.control_socket_fd);   // TODO: Find better way to discard initial message perhaps, it's missing verification!
+    Buffer * response = receiveResponse(socket_fds.control_socket_fd);
+    if (response == NULL || strncmp(response->data, "220", 3) != 0) ERROR("main: Incorrect welcome message");
     destroyBuffer(response);
 
     if (login(socket_fds.control_socket_fd, args.user, args.password) < 0) ERROR("main: login()");
@@ -36,7 +37,8 @@ int main(int argc, char *argv[]) {
 
     if (downloadFile(&socket_fds, args.file_path) < 0) ERROR("main: downloadFile()");
 
-    // TODO: free args
+    destroyArguments(&args);
+    
     return 0;
 }
 
@@ -65,6 +67,13 @@ int parseArguments(const char * url_path, Arguments * args) {
     args->file_path = createBuffer(token, strlen(token));
 
     return 0;
+}
+
+void destroyArguments(Arguments * args) {
+    destroyBuffer(args->user);
+    destroyBuffer(args->password);
+    destroyBuffer(args->host);
+    destroyBuffer(args->file_path);
 }
 
 Buffer * retrieveIpAddress(const Buffer * host) {

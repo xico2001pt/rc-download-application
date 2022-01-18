@@ -42,7 +42,7 @@ Buffer * allocateBuffer(size_t length);
 /**
  * @brief Frees everything from the buffer
  * 
- * @param buffer 
+ * @param buffer    Buffer to be destroyed
  */
 void destroyBuffer(Buffer *buffer);
 

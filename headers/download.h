@@ -31,6 +31,13 @@ typedef struct {
 int parseArguments(const char * url_path, Arguments * args);
 
 /**
+ * @brief Frees everything from the buffer
+ * 
+ * @param args Arguments to be destroyed
+ */
+void destroyArguments(Arguments * args);
+
+/**
  * @brief Retrieves an IP address from the given host name
  * 
  * @param host      Host name to be used in IP retrieval
@@ -49,28 +56,28 @@ Buffer * retrieveIpAddress(const Buffer * host);
 int login(int control_socket_fd, const Buffer * user, const Buffer * password);
 
 /**
- * @brief 
+ * @brief High-level function responsible for sending a command to enter passive mode
  * 
- * @param ftp 
- * @return int 
+ * @param ftp   Struct that contains the control and data file descriptors for the FTP
+ * @return int  0 on success, -1 otherwise
  */
 int enterPassiveMode(FTP * ftp);
 
 /**
  * @brief 
  * 
- * @param control_socket_fd 
- * @param file_path 
- * @return long 
+ * @param control_socket_fd Control socket used to send commands and receive responses
+ * @param file_path         File path to be sent
+ * @return long             Number of bytes to be read on success, -1 otherwise
  */
 long retrieveFile(int control_socket_fd, const Buffer * file_path);
 
 /**
  * @brief 
  * 
- * @param ftp 
- * @param file_path 
- * @return int 
+ * @param ftp       Struct that contains the control and data file descriptors for the FTP
+ * @param file_path File path to be sent
+ * @return int      0 on success, -1 otherwise
  */
 int downloadFile(const FTP * ftp, const Buffer * file_path);
 
