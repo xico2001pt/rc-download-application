@@ -3,17 +3,6 @@
 
 #include "../headers/utils.h"
 
-/*
-Data Structures:
-    x response
-
-Methods:
-    x connectSocket(+ip address, +port) : socket descriptor or -1 if error
-    x disconnectSocket(+ftp)
-    x sendCommand(fd, command) : number of bytes written or -1
-    x receiveResponse(fd, buffer): 0 or -1
-*/
-
 /**
  * @brief Opens a socket in the given address and port
  * 

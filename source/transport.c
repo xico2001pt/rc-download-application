@@ -1,4 +1,5 @@
 #include "../headers/transport.h"
+#include "../headers/utils.h"
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -15,40 +16,29 @@ int connectSocket(SocketInfo * info) {
     bzero((char *) &server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = inet_addr(info->address->data);   // 32 bit Internet address network byte ordered
-    server_addr.sin_port = htons(info->port);                 // Server TCP port must be network byte ordered
+    server_addr.sin_port = htons(info->port);                       // Server TCP port must be network byte ordered
 
     // Opening the TCP socket
-    if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        printf("connectSocket(): socket()\n");
-        return -1;
-    }
+    if ((socketFd = socket(AF_INET, SOCK_STREAM, 0)) < 0) ERROR("connectSocket(): socket()");
 
     // Connecting to the server
-    if (connect(socketFd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) {
-        printf("connectSocket(): connect()\n");
-        return -1;
-    }
+    if (connect(socketFd, (struct sockaddr *) &server_addr, sizeof(server_addr)) < 0) ERROR("connectSocket(): connect()");
 
     return socketFd;
 }
 
 int disconnectSocket(int socketFd) {
-    if (close(socketFd) < 0) {
-        printf("disconnectSocket(): close()\n");
-        return -1;
-    }
+    if (close(socketFd) < 0) ERROR("disconnectSocket(): close()");
     return 0;
 }
 
 int sendCommand(int socketFd, Buffer * command) {
     int bytes;
+    printf("%s\n", command->data);
     Buffer * execute = createBuffer("\n", 1);
     concatBuffers(command, execute);
     destroyBuffer(execute);
-    if ((bytes = write(socketFd, command->data, command->length) <= 0)) {
-        printf("sendCommand(): write()\n");
-        return -1;
-    }
+    if ((bytes = write(socketFd, command->data, command->length) <= 0)) ERROR("sendCommand(): write()\n");
     return bytes;
 }
 
@@ -65,13 +55,14 @@ Buffer * receiveResponse(int socketFd) {
     }
 
     if (lineLen < 0) {
-        // processar erro
-        return NULL;
+        fclose(file);
+        if (line) free(line);
+        NERROR("receiveResponse(): Error when trying to read a line");
     }
 
     Buffer *response = createBuffer(message, messageLen);
 
-    printf("%s", message);
+    printf("%s", message);  // DEBUG
 
     fclose(file);
     if (line) free(line);

@@ -7,40 +7,36 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 int main(int argc, char *argv[]) {
-    /*Arguments args;
-    Buffer * host = createBuffer(argv[1], strlen(argv[1]));
-    Buffer ip;
-    if (retrieveIpAddress(host, &ip)) {
-        printf("error\n");
-        destroyBuffer(host);
-        return -1;
-    }
-    printf("host: %s\nip: %s\n", argv[1], ip.data);
-    destroyBuffer(host);*/
+
+    if (argc != 2) ERROR("usage: download ftp://[<user>:<password>@]<host>/<url-path>");
 
     Arguments args;
-    if (parseArguments(argv[1], &args)) return -1;
-    printf("user: %s\npassword: %s\nhost: %s\nfile_path: %s\n", args.user->data, args.password->data, args.host->data, args.file_path->data);
+    if (parseArguments(argv[1], &args) < 0) ERROR("main: parseArguments()");
+
+    printf("user: %s\npassword: %s\nhost: %s\nfile_path: %s\n", args.user->data, args.password->data, args.host->data, args.file_path->data);   // DEBUG
+
+    Buffer * ip = retrieveIpAddress(args.host);
+    if (ip == NULL) ERROR("main: retrieveIpAddress()");
+
+    FTP socket_fds;
+    SocketInfo socket_info = {ip, 21};
+    if ((socket_fds.control_socket_fd = connectSocket(&socket_info)) < 0) ERROR("main: connectSocket()");
+    destroyBuffer(ip);
     
-    // TODO: FREE BUFFERS IN ARGS
+    Buffer * response = receiveResponse(socket_fds.control_socket_fd);   // TODO: Find better way to discard initial message perhaps, it's missing verification!
+    destroyBuffer(response);
 
-    Buffer ip;
-    if (retrieveIpAddress(args.host, &ip) != 0) return -1;
-    printf("ip: %s\n", ip);
-    
-    FTP ftp;
-    SocketInfo info;
-    info.address = &ip;
-    info.port = 21;
-    if ((ftp.control_socket_fd = connectSocket(&info)) < 0) return -1;
+    if (login(socket_fds.control_socket_fd, args.user, args.password) < 0) ERROR("main: login()");
 
-    Buffer *response = receiveResponse(ftp.control_socket_fd);
+    if (enterPassiveMode(&socket_fds) < 0) ERROR("main: enterPassiveMode()");
 
-    if (login(ftp.control_socket_fd, args.user, args.password) < 0) return -1;
-    if (enterPassiveMode(&ftp) < 0) return -1;
+    if (downloadFile(&socket_fds, args.file_path) < 0) ERROR("main: downloadFile()");
 
+    // TODO: free args
     return 0;
 }
 
@@ -48,90 +44,57 @@ int parseArguments(const char * url_path, Arguments * args) {
     // TODO: USER E PASSWORD OPCIONAIS
     char * token;
     if ((token = strstr(url_path, "://")) == NULL || strncmp(url_path, "ftp", strlen(url_path) - strlen(token)) != 0) {
-        printf("parseArguments(): Incorrect protocol\n");
-        return -1;
+        ERROR("parseArguments(): Incorrect protocol");
     }
     token += 3;
 
-    if ((token = strtok(token, ":")) == NULL) {
-        printf("parseArguments(): User invalid\n");
-        return -1;
-    }
+    if ((token = strtok(token, ":")) == NULL) ERROR("parseArguments(): User invalid");
 
     args->user = createBuffer(token, strlen(token));
 
-    if ((token = strtok(NULL, "@")) == NULL) {
-        printf("parseArguments(): Password invalid\n");
-        return -1;
-    }
+    if ((token = strtok(NULL, "@")) == NULL) ERROR("parseArguments(): Password invalid");
 
     args->password = createBuffer(token, strlen(token));
 
-    if ((token = strtok(NULL, "/")) == NULL) {
-        printf("parseArguments(): Host name invalid\n");
-        return -1;
-    }
+    if ((token = strtok(NULL, "/")) == NULL) ERROR("parseArguments(): Host name invalid");
 
     args->host = createBuffer(token, strlen(token));
 
-    if ((token = strtok(NULL, "")) == NULL) {
-        printf("parseArguments(): Url path invalid\n");
-        return -1;
-    }
+    if ((token = strtok(NULL, "")) == NULL) ERROR("parseArguments(): Url path invalid");
 
     args->file_path = createBuffer(token, strlen(token));
 
     return 0;
 }
 
-int retrieveIpAddress(const Buffer * host, Buffer * ip) {
-    struct hostent *h;
-
-    if ((h = gethostbyname(host->data)) == NULL) {
-        printf("gethostbyname()\n");
-        return -1;
-    }
-    
-    ip->data = inet_ntoa(*((struct in_addr *) h->h_addr)); // TODO: CHECK IF FREE() IS NEEDED
-    ip->length = strlen(ip->data);
-    return 0;
+Buffer * retrieveIpAddress(const Buffer * host) {
+    struct hostent * h;
+    if ((h = gethostbyname(host->data)) == NULL) NERROR("retrieveIpAddress(): Failed to obtain ip by host name");
+    char * temp = inet_ntoa(*((struct in_addr *) h->h_addr));
+    Buffer * ip = createBuffer(temp, strlen(temp));
+    return ip;
 }
 
 int login(int control_socket_fd, const Buffer * user, const Buffer * password) {
-    Buffer *command, *response;
-    int result;
     
-    command = createBuffer("user ", 5);
+    Buffer * command = createBuffer("user ", 5);
     concatBuffers(command, user);
-    result = sendCommand(control_socket_fd, command);
+    int result = sendCommand(control_socket_fd, command);
     destroyBuffer(command);
-    if (result < 0) {
-        printf("login(): User sendCommand()\n");
-        return -1;
-    }
+    if (result < 0) ERROR("login(): User sendCommand()");
 
-    if ((response = receiveResponse(control_socket_fd)) == NULL) {
-        printf("login(): User recieveResponse()\n");
-        return -1;
-    }
+    Buffer * response = receiveResponse(control_socket_fd);
+    if (response == NULL) ERROR("login(): User recieveResponse()");
     destroyBuffer(response);
 
     command = createBuffer("pass ", 5);
     concatBuffers(command, password);
     result = sendCommand(control_socket_fd, command);
     destroyBuffer(command);
-    if (result < 0) {
-        printf("login(): Password sendCommand()\n");
-        return -1;
-    }
-    if ((response = receiveResponse(control_socket_fd)) == NULL) {
-        printf("login(): Password recieveResponse()\n");
-        return -1;
-    }
-    if (strncmp(response->data, "230", 3) != 0) {
-        printf("login(): User and Password Combination Failed\n");
-        return -1;
-    }
+    if (result < 0) ERROR("login(): Password sendCommand()");
+
+    if ((response = receiveResponse(control_socket_fd)) == NULL) ERROR("login(): Password recieveResponse()");
+    if (strncmp(response->data, "230", 3) != 0) ERROR("login(): User and Password Combination Failed");
     destroyBuffer(response);
     
     return 0;
@@ -141,37 +104,85 @@ int enterPassiveMode(FTP * ftp) {
     Buffer * command = createBuffer("pasv", 4);
     int result = sendCommand(ftp->control_socket_fd, command);
     destroyBuffer(command);
-    if (result < 0) {
-        printf("enterPassiveMode(): Send pasv command\n");
-        return -1;
-    }
+    if (result < 0) ERROR("enterPassiveMode(): Send pasv command");
 
     Buffer * response = receiveResponse(ftp->control_socket_fd);
-    if (response == NULL || strncmp(response->data, "227", 3) != 0) {
-        printf("enterPassiveMode(): Recieve pasv response\n");
-        return -1;
-    }
+    if (response == NULL || strncmp(response->data, "227", 3) != 0) ERROR("enterPassiveMode(): Recieve pasv response");
 
     SocketInfo data_socket_info;
-    if (parsePasvResponse(response, &data_socket_info) < 0) {
-        printf("enterPassiveMode(): Parse data socket address error\n");
-        return -1;
-    }
+    if (parsePasvResponse(response, &data_socket_info) < 0) ERROR("enterPassiveMode(): Parse data socket address error");
+
+    destroyBuffer(response);
 
     int fd;
-    if ((fd = connectSocket(&data_socket_info)) < 0) {
-        printf("enterPassiveMode(): Connect data socket error\n");
-        return -1;
-    }
+    if ((fd = connectSocket(&data_socket_info)) < 0) ERROR("enterPassiveMode(): Connect data socket error");
 
     ftp->data_socket_fd = fd;
     return 0;
 }
 
-int retrieveFile(int control_socket_fd) {
+long retrieveFile(int control_socket_fd, const Buffer * file_path) {
+    Buffer * command = createBuffer("retr ", 5);
+    concatBuffers(command, file_path);
+    int result = sendCommand(control_socket_fd, command);
+    destroyBuffer(command);
+    if (result < 0) ERROR("retrieveFile(): Send retr command");
 
+    Buffer * response = receiveResponse(control_socket_fd);
+    if (response == NULL || strncmp(response->data, "150", 3) != 0) ERROR("retrieveFile(): Receive retr response");
+
+    int bytes_to_read;
+    if ((bytes_to_read = parseRetrResponse(response)) < 0) ERROR("retrieveFile(): Parse File Size Information error");
+
+    destroyBuffer(response);
+    return bytes_to_read;
 }
 
-int downloadFile(int data_socket_fd, const Buffer * file_path) {
+int downloadFile(const FTP * ftp, const Buffer * file_path) {
+    long bytes_to_read = retrieveFile(ftp->control_socket_fd, file_path);
+    if (bytes_to_read < 0) ERROR("downloadFile(): Retrieve file");
+    printf("File Size: %ld\n", bytes_to_read);
+
+    Buffer * file_name = pathToFilename(file_path);
+    int fd = open(file_name->data, O_WRONLY | O_CREAT, 0666);
+    destroyBuffer(file_name);
+    if (fd < 0) {
+        close(fd);
+        ERROR("downloadFile(): Create file");
+    }
+
+    Buffer * file = allocateBuffer(bytes_to_read);
+    long total_bytes_read = 0, bytes_read;
     
+    printf("> Progress: 0%%");
+    while (total_bytes_read < file->length) {
+        if ((bytes_read = read(ftp->data_socket_fd, file->data + total_bytes_read, file->length - total_bytes_read)) < 0) {
+            close(fd);
+            destroyBuffer(file);
+            ERROR("downloadFile(): Read file");
+        }
+        total_bytes_read += bytes_read;
+        printf("\r> Progress: %3d%%", (int) (100 * total_bytes_read / file->length));
+    }
+    printf("\n");
+
+    Buffer * response = receiveResponse(ftp->control_socket_fd);
+    if (response == NULL || strncmp(response->data, "226", 3) != 0) {
+        close(fd);
+        destroyBuffer(file);
+        destroyBuffer(response);
+        ERROR("downloadFile(): Retr response error");
+    }
+    
+    destroyBuffer(response);
+
+    if (write(fd, file->data, file->length) < file->length) {
+        close(fd);
+        destroyBuffer(file);
+        ERROR("downloadFile(): Write file");
+    }
+    
+    close(fd);
+    destroyBuffer(file);
+    return 0;
 }
