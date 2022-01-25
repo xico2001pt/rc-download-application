@@ -17,7 +17,9 @@ int main(int argc, char *argv[]) {
     Arguments args;
     if (parseArguments(argv[1], &args) < 0) ERROR("main: parseArguments()");
 
-    printf("user: %s\npassword: %s\nhost: %s\nfile_path: %s\n", args.user->data, args.password->data, args.host->data, args.file_path->data);   // DEBUG
+    #ifdef DEBUG
+        printf("user: %s\npassword: %s\nhost: %s\nfile_path: %s\n", args.user->data, args.password->data, args.host->data, args.file_path->data);
+    #endif
 
     Buffer * ip = retrieveIpAddress(args.host);
     if (ip == NULL) ERROR("main: retrieveIpAddress()");
@@ -150,7 +152,8 @@ long retrieveFile(int control_socket_fd, const Buffer * file_path) {
 int downloadFile(const FTP * ftp, const Buffer * file_path) {
     long bytes_to_read = retrieveFile(ftp->control_socket_fd, file_path);
     if (bytes_to_read < 0) ERROR("downloadFile(): Retrieve file");
-    printf("File Size: %ld\n", bytes_to_read);
+
+    printf("File Size: %ld Bytes\n", bytes_to_read);
 
     Buffer * file_name = pathToFilename(file_path);
     int fd = open(file_name->data, O_WRONLY | O_CREAT, 0666);
@@ -160,38 +163,35 @@ int downloadFile(const FTP * ftp, const Buffer * file_path) {
         ERROR("downloadFile(): Create file");
     }
 
-    Buffer * file = allocateBuffer(bytes_to_read);
+    Buffer * buffer = allocateBuffer(MAX_BYTES_READ);
     long total_bytes_read = 0, bytes_read;
     
-    printf("> Progress: 0%%");
-    while (total_bytes_read < file->length) {
-        if ((bytes_read = read(ftp->data_socket_fd, file->data + total_bytes_read, file->length - total_bytes_read)) < 0) {
+    printf("> Progress:  0%%");
+    while (total_bytes_read < bytes_to_read) {
+        if ((bytes_read = read(ftp->data_socket_fd, buffer->data, MAX_BYTES_READ)) < 0) {
             close(fd);
-            destroyBuffer(file);
+            destroyBuffer(buffer);
             ERROR("downloadFile(): Read file");
         }
+        if (write(fd, buffer->data, bytes_read) != bytes_read) {
+            close(fd);
+            destroyBuffer(buffer);
+            ERROR("downloadFile(): Write file");
+        }
         total_bytes_read += bytes_read;
-        printf("\r> Progress: %3d%%", (int) (100 * total_bytes_read / file->length));
+        printf("\r> Progress: %3d%%", (int) (100 * total_bytes_read / bytes_to_read));
     }
     printf("\n");
+    destroyBuffer(buffer);
 
     Buffer * response = receiveResponse(ftp->control_socket_fd);
     if (response == NULL || strncmp(response->data, "226", 3) != 0) {
         close(fd);
-        destroyBuffer(file);
         destroyBuffer(response);
         ERROR("downloadFile(): Retr response error");
     }
     
     destroyBuffer(response);
-
-    if (write(fd, file->data, file->length) < file->length) {
-        close(fd);
-        destroyBuffer(file);
-        ERROR("downloadFile(): Write file");
-    }
-    
     close(fd);
-    destroyBuffer(file);
     return 0;
 }

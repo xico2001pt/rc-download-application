@@ -34,7 +34,11 @@ int disconnectSocket(int socketFd) {
 
 int sendCommand(int socketFd, Buffer * command) {
     int bytes;
-    printf("%s\n", command->data);
+
+    #ifdef DEBUG
+        printf("%s\n", command->data);
+    #endif
+
     Buffer * execute = createBuffer("\n", 1);
     concatBuffers(command, execute);
     destroyBuffer(execute);
@@ -62,7 +66,9 @@ Buffer * receiveResponse(int socketFd) {
 
     Buffer *response = createBuffer(message, messageLen);
 
-    printf("%s", message);  // DEBUG
+    #ifdef DEBUG
+        printf("%s", message);
+    #endif
 
     fclose(file);
     if (line) free(line);

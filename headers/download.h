@@ -3,6 +3,8 @@
 
 #include "../headers/utils.h"
 
+#define MAX_BYTES_READ 4096
+
 /**
  * @brief Struct that keeps the data from the URL argument
  */
