@@ -1,0 +1,39 @@
+configure terminal
+vlan 50
+end
+
+configure terminal
+vlan 51
+end
+
+configure terminal
+interface fastethernet 0/1
+switchport mode access
+switchport access vlan 50
+end
+
+configure terminal
+interface fastethernet 0/2
+switchport mode access
+switchport access vlan 50
+end
+
+configure terminal
+interface fastethernet 0/13
+switchport mode access
+switchport access vlan 51
+end
+
+configure terminal
+interface fastethernet 0/14
+switchport mode access
+switchport access vlan 51
+end
+
+configure terminal
+interface fastethernet 0/23
+switchport mode access
+switchport access vlan 51
+end
+
+
