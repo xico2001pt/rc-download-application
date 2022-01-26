@@ -1,0 +1,8 @@
+Tux52 (eth0) -> Switch Porta 13 (vlan 51)
+Tux53 (S0)   -> T3
+T4           -> Consola Router/Switch
+Tux53 (eth0) -> Switch Porta 1  (vlan 50)
+Tux54 (eth0) -> Switch Porta 2  (vlan 50)
+Tux54 (eth1) -> Switch Porta 14 (vlan 51)
+Router (E0)  -> Switch Porta 23
+Router (E1)  -> LabNet Porta 5.1 (por exemplo)
