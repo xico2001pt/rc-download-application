@@ -15,4 +15,4 @@ download ftp://ftp.up.pt/pub/kodi/timestamp.txt
 
 Where the URL path is
 
-ftp://[<user>:<password>@]<host>/<url-path>
+`ftp://[<user>:<password>@]<host>/<url-path>`
